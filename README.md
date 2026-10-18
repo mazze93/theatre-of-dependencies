@@ -1,6 +1,6 @@
 # Theatre of Dependencies
 
-> `seed` · v0.1.0 · Node ≥ 20 · zero dependencies
+> `seed` · v0.1.0 · Node ≥ 20 · zero dependencies · MIT
 
 A slime mold reads your dependency graph and stages an **upgrade ritual**: the
 smallest set of direct dependencies to act on, in order, with exactly how much
