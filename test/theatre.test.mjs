@@ -116,6 +116,9 @@ test('the stage escapes attacker-controlled package names', () => {
   const data = html.slice(html.indexOf('id="stage-data">'), html.indexOf('</script>', html.indexOf('id="stage-data">')));
   assert.ok(!data.includes('<img') && !data.includes('<!--'));
   assert.ok(data.includes('\\u003c/script\\u003e'));
+  // Behind Cloudflare, Rocket Loader defers inline scripts through a loader the
+  // stage's own CSP blocks; the opt-out keeps the stage running when hosted.
+  assert.match(html, /<script data-cfasync="false">\s*\(\(\) => \{/);
 });
 
 test('cli: demo runs offline, --json is machine-readable, --gate fails a thin ritual', () => {

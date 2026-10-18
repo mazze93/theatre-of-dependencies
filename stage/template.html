@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="dark">
 <title>Theatre of Dependencies</title>
@@ -213,7 +213,9 @@ body.clean{grid-template-columns:1fr}
 </nav>
 
 <script type="application/json" id="stage-data">"__STAGE_DATA__"</script>
-<script>
+<!-- data-cfasync="false": when served behind Cloudflare, Rocket Loader would otherwise
+     rewrite this into a deferred script that its loader (blocked by the CSP above) never runs. -->
+<script data-cfasync="false">
 (() => {
 'use strict';
 const S = JSON.parse(document.getElementById('stage-data').textContent);
