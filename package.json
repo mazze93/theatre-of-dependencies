@@ -1,0 +1,16 @@
+{
+  "name": "theatre-of-dependencies",
+  "version": "0.1.0",
+  "description": "A slime mold reads your dependency graph and stages an upgrade ritual: the minimal set of direct dependencies to act on, verified by an exact cut.",
+  "type": "module",
+  "bin": { "theatre": "bin/theatre.mjs" },
+  "files": ["bin", "src", "stage"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/",
+    "demo": "node bin/theatre.mjs demo"
+  },
+  "author": "Mazze LeCzzare Frazer <mazze@mazzeleczzare.com>",
+  "license": "MIT",
+  "private": true
+}

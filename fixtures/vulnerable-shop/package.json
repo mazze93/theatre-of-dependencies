@@ -1,0 +1,25 @@
+{
+  "name": "vulnerable-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fixture: a small storefront pinned to 2020-era dependencies with known advisories. Lockfile only; never installed.",
+  "dependencies": {
+    "axios": "0.21.0",
+    "ejs": "3.1.6",
+    "express": "4.17.1",
+    "handlebars": "4.5.3",
+    "jsonwebtoken": "8.5.1",
+    "lodash": "4.17.15",
+    "marked": "0.7.0",
+    "minimatch": "3.0.4",
+    "mkdirp": "0.5.1",
+    "moment": "2.29.1",
+    "node-fetch": "2.6.0",
+    "request": "2.88.0",
+    "shelljs": "0.8.4",
+    "ws": "7.4.0"
+  },
+  "devDependencies": {
+    "mocha": "8.2.1"
+  }
+}

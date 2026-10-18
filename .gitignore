@@ -1,0 +1,4 @@
+node_modules/
+theatre-stage.html
+*.stage.html
+.DS_Store
