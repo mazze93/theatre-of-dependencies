@@ -14,7 +14,7 @@
 - **Only one of the two can be honest in isolation.** Theatre's animation can replay real solver steps over a real graph. kintsugi's demo, like the page's own panel, would be a scripted state machine with a random eject reason. The spine's line "the break is the record" doesn't survive a fake break.
 - **The page's metaphor maps onto a real algorithm.** Tero et al.'s adaptive network competes rival routes when γ > 1, which is exactly "converge on a minimal set of roots". Run as multi-commodity flow over each advisory's *ancestor* subgraph, it respects dependency direction. A naive undirected resistor network would credit packages that can't actually deliver the vulnerability.
 - **The organism proposes; an exact cut verifies.** Physarum consolidates each advisory's flow onto one entrance, but upgrading that entrance does not close an advisory that also enters elsewhere (in the fixture, `qs` comes in through both `express` and `request`). Coverage is therefore computed exactly: an advisory closes only when every entrance it can use is in the ritual. The report names those shared entrances instead of rounding them away.
-- **Both proposals overclaim on the live page today.** It lists kintsugi as "Python · verified" and both instruments link "→ source & demo" to the bare GitHub profile. Neither existed when this was decided. Building Theatre makes one of those links true; the other still needs correcting on the page.
+- **Both proposals overclaimed on the live page.** From its publication on 2026-07-16 it listed kintsugi as "Python · verified", labelled both panels "live", and pointed the slime mold at "repos at github.com/mazze93". Neither tool existed. (An earlier draft of this record said both linked "→ source & demo"; that wording was in a pasted draft of the page, never in the published one. Corrected 2026-10-18.) The page now carries a visible correction.
 
 ## Sources
 
@@ -31,5 +31,5 @@
 ## Action
 
 - Done: `tools/theatre-of-dependencies`, a zero-dependency Node CLI plus a standalone HTML stage.
-- Open: fix the spine page's kintsugi claim ("Python · verified") and point the Theatre link at this repo once it has a remote.
+- Done 2026-10-18: spine page corrected in place, with the old wording kept visible; the Theatre link points at `/theatre-of-dependencies/` and this repo.
 - Later: kintsugi as a module in `temenos` or `delegation-harness`, where real tools eject under real load and the eject-reason taxonomy has data to record.
