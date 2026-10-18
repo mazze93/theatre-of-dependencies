@@ -74,7 +74,9 @@ const maxActs = o['max-acts'] ? Number.parseInt(o['max-acts'], 10) : 7;
 if (!(maxActs >= 1 && maxActs <= 12)) fail('--max-acts must be 1–12');
 
 const demo = cmd === 'demo';
-const path = resolve(demo ? join(ROOT, 'fixtures/vulnerable-shop') : target ?? '.');
+// Fixture files are deliberately not named package*.json, so dependency scanners
+// don't raise its intentionally vulnerable pins as alerts against this repo.
+const path = resolve(demo ? join(ROOT, 'fixtures/vulnerable-shop/lockfile.fixture.json') : target ?? '.');
 const cacheDir = o.cache ? resolve(o.cache) : demo ? join(ROOT, 'fixtures/vulnerable-shop/.osv-cache') : join(homedir(), '.cache/theatre-of-dependencies');
 const quiet = !!o.json;
 const log = (m) => { if (!quiet) process.stderr.write(`  ${colorOn ? '\x1b[2m' : ''}${m}${colorOn ? '\x1b[0m' : ''}\n`); };

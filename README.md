@@ -144,7 +144,8 @@ src/ritual.mjs         acts, exact-cut coverage, second opinion, overrides
 src/render-term.mjs    terminal growth sequence + playbill
 src/stage.mjs          stage data + safe embedding
 stage/template.html    the stage
-fixtures/vulnerable-shop/  2020-era storefront lockfile + OSV snapshot (offline demo)
+fixtures/vulnerable-shop/  2020-era storefront lockfile + OSV snapshot (offline demo); files are
+                           named *.fixture.json so scanners don't alert on its deliberate pins
 docs/DECISION.md       why this, not kintsugi (high-signal-engine dogfood)
 ```
 
