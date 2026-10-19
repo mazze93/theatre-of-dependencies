@@ -99,6 +99,21 @@ export function stageRitual(terrain, food, organism, { maxActs = 7, backbone = 0
   };
 }
 
+// The script as written to package.json: root bumps, scoped overrides, and, in a
+// workspace project, bumps for each member manifest.
+export function scriptOf(ritual) {
+  const { bumps, overrides, workspaces } = ritual.overrides;
+  return { dependencies: bumps, overrides, ...(Object.keys(workspaces ?? {}).length ? { workspaces } : {}) };
+}
+
+// The overridden packages, by bare name: what `npm update` must re-resolve.
+export function refreshList(ritual) {
+  const out = new Set();
+  const walk = (o) => { for (const [k, v] of Object.entries(o)) typeof v === 'string' ? out.add(k) : walk(v); };
+  walk(ritual.overrides.overrides);
+  return [...out].sort();
+}
+
 // The thickest-tube path from a direct dependency down to the vulnerable package.
 function pathTo(edges, organism, from, to, anc) {
   const kids = new Map();
@@ -115,19 +130,43 @@ function pathTo(edges, organism, from, to, anc) {
 
 // npm `overrides`, scoped under each act's direct dependency, so a fix lands only
 // in the subtree the act claims. A vulnerable direct dependency is bumped in
-// `dependencies` instead — npm rejects overriding a direct dep (EOVERRIDE).
+// `dependencies` instead — npm rejects overriding a direct dep (EOVERRIDE). In a
+// workspace project the bump goes to each member manifest that declares it.
+//
+// One act can carry the same package on two major lines (nanoid 3 under one
+// parent, nanoid 4 under another). A single rule would drag both to the highest
+// fix, so those copies are each scoped under their own parent instead.
+//
+// npm matches an override key by name anywhere in the tree, not only at the top.
+// When the terrain holds another package of the same name (an act "mermaid" and
+// a nested mermaid@11 under another act), a bare key would also capture that
+// copy and replace the rules it inherited, so the key is pinned: "mermaid@12.2.0".
 function overridesFor(nodes, acts, direct) {
-  const overrides = {}, bumps = {}, majors = [];
+  const overrides = {}, bumps = {}, workspaces = {}, majors = [];
+  const major = (v) => v.split('.')[0];
+  const count = new Map();
+  for (const n of nodes.slice(1)) count.set(n.name, (count.get(n.name) ?? 0) + 1);
+  const key = (id) => (count.get(nodes[id].name) > 1 && nodes[id].version ? `${nodes[id].name}@${nodes[id].version}` : nodes[id].name);
   for (const act of acts) {
-    for (const it of act.items) {
-      if (!it.fixed || nodes[it.node].ecosystem !== 'npm') continue;
-      if (it.node === act.root) { bumps[it.name] = `^${it.fixed}`; continue; }
+    const items = act.items.filter((it) => it.fixed && nodes[it.node].ecosystem === 'npm');
+    const lines = new Map();
+    for (const it of items) (lines.get(it.name) ?? lines.set(it.name, new Set()).get(it.name)).add(major(it.version));
+    for (const it of items) {
+      if (it.node === act.root) {
+        for (const file of nodes[it.node].manifests ?? ['package.json']) {
+          if (file === 'package.json') bumps[it.name] = `^${it.fixed}`;
+          else (workspaces[file.slice(0, -'/package.json'.length)] ??= {})[it.name] = `^${it.fixed}`;
+        }
+        continue;
+      }
       if (direct.has(it.node)) continue;
-      const scope = (overrides[act.name] ??= {});
-      const prev = scope[it.name]?.slice(1);
+      let scope = (overrides[key(act.root)] ??= {});
+      const parent = it.path.length > 2 ? key(it.path.at(-2)) : null;
+      if (lines.get(it.name).size > 1 && parent) scope = (scope[parent] ??= {});
+      const prev = typeof scope[it.name] === 'string' ? scope[it.name].slice(1) : null;
       if (!prev || compare(it.fixed, prev) > 0) scope[it.name] = `^${it.fixed}`;
-      if (it.fixed.split('.')[0] !== it.version.split('.')[0]) majors.push(`${it.name} ${it.version} → ${it.fixed}`);
+      if (major(it.fixed) !== major(it.version)) majors.push(`${it.name} ${it.version} → ${it.fixed}`);
     }
   }
-  return { overrides, bumps, majors: [...new Set(majors)] };
+  return { overrides, bumps, workspaces, majors: [...new Set(majors)] };
 }

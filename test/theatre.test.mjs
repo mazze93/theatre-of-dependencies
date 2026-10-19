@@ -7,7 +7,7 @@ import { cvss3Score, severityOf } from '../src/severity.mjs';
 import { compare, fixedFor } from '../src/semver.mjs';
 import { fromNpmLock, fromCycloneDX } from '../src/graph.mjs';
 import { grow } from '../src/physarum.mjs';
-import { stageRitual } from '../src/ritual.mjs';
+import { stageRitual, refreshList } from '../src/ritual.mjs';
 import { stageData, renderStage } from '../src/stage.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/theatre.mjs', import.meta.url));
@@ -49,6 +49,73 @@ test('npm v3 lockfile: nested node_modules resolve like Node does', () => {
   assert.ok(!has('b@1.0.0', 'c@1.0.0'));
   assert.ok(g.edges.some(([x, y]) => x === 0 && y === id('t@1.0.0')));
   assert.equal(g.nodes[id('t@1.0.0')].dev, true);
+});
+
+test('npm workspaces: members fold into the project, their deps are its entrances', () => {
+  const lock = { lockfileVersion: 3, packages: {
+    '': { name: 'mono', workspaces: ['app', 'lib'], devDependencies: { fonts: '1' } },
+    app: { name: '@m/app', version: '0.1.0', dependencies: { '@m/lib': '0.1.0', ui: '1' }, devDependencies: { bundler: '1' } },
+    lib: { name: '@m/lib', version: '0.1.0', dependencies: { tiny: '1' } },
+    'node_modules/@m/app': { resolved: 'app', link: true },
+    'node_modules/@m/lib': { resolved: 'lib', link: true },
+    'node_modules/ui': { version: '2.0.0', dependencies: { tiny: '2' } },
+    'node_modules/ui/node_modules/tiny': { version: '2.0.0' },
+    'node_modules/tiny': { version: '1.0.0' },
+    'node_modules/bundler': { version: '1.0.0', dev: true },
+    'node_modules/fonts': { version: '1.0.0', dev: true },
+  } };
+  const g = fromNpmLock(lock);
+  const id = (nv) => g.nodes.findIndex((n) => `${n.name}@${n.version}` === nv);
+  const fromRoot = (nv) => g.edges.some(([x, y]) => x === 0 && y === id(nv));
+  // Members are the project itself, not packages on the terrain.
+  assert.equal(id('@m/app@0.1.0'), -1);
+  assert.equal(id('@m/lib@0.1.0'), -1);
+  for (const nv of ['ui@2.0.0', 'bundler@1.0.0', 'tiny@1.0.0', 'fonts@1.0.0']) assert.ok(fromRoot(nv), nv);
+  assert.ok(g.edges.some(([x, y]) => x === id('ui@2.0.0') && y === id('tiny@2.0.0')));
+  assert.ok(!g.edges.some(([, y]) => y === 0), 'nothing points back at the project');
+  // A bump must land in the manifest that declares the dependency.
+  assert.deepEqual(g.nodes[id('ui@2.0.0')].manifests, ['app/package.json']);
+  assert.deepEqual(g.nodes[id('tiny@1.0.0')].manifests, ['lib/package.json']);
+  assert.deepEqual(g.nodes[id('fonts@1.0.0')].manifests, ['package.json']);
+});
+
+test('a vulnerable direct dependency of a workspace is bumped in that workspace', () => {
+  const t = diamond();
+  t.nodes[3].manifests = ['app/package.json'];
+  const food = [{ node: 3, name: 'n3', version: '1.0.0', w: 1, fixed: '1.0.4',
+    advisories: [{ id: 'GHSA-z', label: 'HIGH', score: 7.5, fixed: '1.0.4', summary: '' }] }];
+  const r = stageRitual(t, food, grow(t, food));
+  assert.equal(r.coverage, 1);
+  assert.deepEqual(r.overrides.bumps, {});
+  assert.deepEqual(r.overrides.workspaces, { app: { n3: '^1.0.4' } });
+});
+
+test('one act, one package on two major lines: each copy is scoped under its own parent', () => {
+  // project(0) → E(1);  E → v3(2);  E → M(3) → v4(4)   (v3 and v4 are the same package)
+  const t = { project: 'p', edges: [[0, 1], [1, 2], [1, 3], [3, 4]], nodes: [
+    { id: 0, name: 'p', version: '', ecosystem: 'npm' }, { id: 1, name: 'E', version: '1.0.0', ecosystem: 'npm' },
+    { id: 2, name: 'nano', version: '3.3.3', ecosystem: 'npm' }, { id: 3, name: 'M', version: '1.0.0', ecosystem: 'npm' },
+    { id: 4, name: 'nano', version: '4.0.2', ecosystem: 'npm' }] };
+  const adv = (fixed) => [{ id: 'GHSA-n', label: 'HIGH', score: 7.5, fixed, summary: '' }];
+  const food = [{ node: 2, name: 'nano', version: '3.3.3', w: 1, fixed: '3.3.18', advisories: adv('3.3.18') },
+    { node: 4, name: 'nano', version: '4.0.2', w: 1, fixed: '5.1.16', advisories: adv('5.1.16') }];
+  const r = stageRitual(t, food, grow(t, food), { backbone: 0 });
+  // A single flat rule would have dragged nano 3.3.3 to ^5.1.16.
+  assert.deepEqual(r.overrides.overrides, { E: { nano: '^3.3.18', M: { nano: '^5.1.16' } } });
+});
+
+test('an act whose name recurs deeper in the tree gets a version-pinned key', () => {
+  // project → A(1) → M@11(3) → k(4);  project → M@12(2) → k2(5)
+  // npm matches a bare "M" key at every depth, so M@11 under A would lose A's rules.
+  const n = (id, name, version) => ({ id, name, version, ecosystem: 'npm' });
+  const t = { project: 'p', edges: [[0, 1], [0, 2], [1, 3], [3, 4], [2, 5]],
+    nodes: [n(0, 'p', ''), n(1, 'A', '1.0.0'), n(2, 'M', '12.0.0'), n(3, 'M', '11.0.0'), n(4, 'k', '0.16.0'), n(5, 'l', '4.0.0')] };
+  const adv = (fixed) => [{ id: 'GHSA-k', label: 'HIGH', score: 7.5, fixed, summary: '' }];
+  const food = [{ node: 4, name: 'k', version: '0.16.0', w: 1, fixed: '0.18.2', advisories: adv('0.18.2') },
+    { node: 5, name: 'l', version: '4.0.0', w: 1, fixed: '4.1.0', advisories: adv('4.1.0') }];
+  const r = stageRitual(t, food, grow(t, food), { backbone: 0 });
+  assert.deepEqual(r.overrides.overrides, { A: { k: '^0.18.2' }, 'M@12.0.0': { l: '^4.1.0' } });
+  assert.deepEqual(refreshList(r), ['k', 'l']);
 });
 
 test('CycloneDX: purl ecosystems, dependency tree, orphans hang off the project', () => {

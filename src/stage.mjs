@@ -3,6 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { scriptOf } from './ritual.mjs';
 
 const TEMPLATE = fileURLToPath(new URL('../stage/template.html', import.meta.url));
 
@@ -40,7 +41,7 @@ export function stageData(terrain, food, organism, ritual, meta) {
     sealedAt,
     state: ritual.state, coverage: ritual.coverage, fixable: ritual.fixable,
     unfixed: ritual.unfixed.map((f) => ({ name: f.name, version: f.version, id: (f.advisories.find((a) => !a.fixed) ?? f.advisories[0]).id })),
-    script: { dependencies: ritual.overrides.bumps, overrides: ritual.overrides.overrides },
+    script: scriptOf(ritual),
     majors: ritual.overrides.majors,
   };
 }

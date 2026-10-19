@@ -1,5 +1,7 @@
 // The terminal stage: a live growth sequence, then the playbill.
 
+import { scriptOf, refreshList } from './ritual.mjs';
+
 const env = process.env;
 const out = process.stdout;
 export const colorOn = !('NO_COLOR' in env) && (env.FORCE_COLOR ? env.FORCE_COLOR !== '0' : out.isTTY);
@@ -147,11 +149,15 @@ export function playbill(terrain, food, organism, ritual, { file, max = 4 } = {}
 }
 
 export function scriptBlock(ritual) {
-  const { overrides, bumps, majors } = ritual.overrides;
-  if (!Object.keys(overrides).length && !Object.keys(bumps).length) return '';
-  const L = [`  ${c.gold('THE SCRIPT', true)} ${c.muted('— merge into package.json, then `npm install` and run your tests')}`, ''];
-  const json = JSON.stringify({ dependencies: bumps, overrides }, null, 2).split('\n');
+  const { overrides, bumps, workspaces, majors } = ritual.overrides;
+  if (!Object.keys(overrides).length && !Object.keys(bumps).length && !Object.keys(workspaces ?? {}).length) return '';
+  const L = [`  ${c.gold('THE SCRIPT', true)} ${c.muted('— merge into package.json, then refresh the lockfile and run your tests')}`, ''];
+  const json = JSON.stringify(scriptOf(ritual), null, 2).split('\n');
   for (const line of json) L.push(`    ${c.soft(line)}`);
+  // npm keeps lockfile entries that already exist when overrides change, so a
+  // plain `npm install` reports "up to date" and leaves the vulnerable copies.
+  const names = refreshList(ritual);
+  if (names.length) L.push('', `  ${c.muted('refresh (npm keeps existing lock entries on a plain install):')}`, `    ${c.soft(`npm update ${names.join(' ')}`)}`);
   if (majors.length) {
     L.push('', `  ${c.coral('!')} ${c.muted('major-version jumps — the parent may not accept these; prefer upgrading the act itself:')}`);
     L.push(`    ${c.muted(majors.join(' · '))}`);

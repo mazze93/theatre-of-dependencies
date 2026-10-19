@@ -1,6 +1,6 @@
 # Theatre of Dependencies
 
-> `seed` · v0.1.0 · Node ≥ 20 · zero dependencies · MIT
+> `seed` · v0.2.0 · Node ≥ 20 · zero dependencies · MIT
 
 A slime mold reads your dependency graph and stages an **upgrade ritual**: the
 smallest set of direct dependencies to act on, in order, with exactly how much
@@ -17,7 +17,8 @@ theatre stage .                   # …and the animated stage, opened in your br
 
 1. **Terrain.** Reads an npm v2/v3 `package-lock.json` (resolving nested
    `node_modules` the way Node does) or a CycloneDX JSON SBOM (any ecosystem,
-   via purl).
+   via purl). In an npm workspaces project the members fold into the project:
+   everything any member declares, dev dependencies included, is an entrance.
 2. **Food.** Asks [OSV.dev](https://osv.dev) which installed versions have
    advisories. Each vulnerable package becomes a food source weighted by
    severity: CVSS v3 computed exactly where a vector exists, otherwise the
@@ -36,9 +37,13 @@ theatre stage .                   # …and the animated stage, opened in your br
    an exact greedy cut over the same budget beats it, that shows up as a
    "second opinion".
 5. **The script.** For each act, an npm `overrides` block scoped under that
-   act, so a fix lands only in the subtree the act claims. Vulnerable direct
+   act, so a fix lands only in the subtree the act claims. When one act
+   carries a package on two major lines, each copy is scoped under its own
+   parent, so neither is dragged onto the other's fix line. Vulnerable direct
    dependencies get a version bump instead, because npm rejects overriding a
-   direct dependency (`EOVERRIDE`). Major-version jumps are flagged.
+   direct dependency (`EOVERRIDE`); in a workspaces project the bump is listed
+   under `workspaces` for the member manifest that declares it. Major-version
+   jumps are flagged.
 6. **The break is kept.** Advisories with no published fix are listed in coral
    and stay on the record. They aren't folded into a percentage.
 
@@ -95,10 +100,15 @@ CI gate:
 
 ## Verified
 
-- `npm test`: 9 tests covering CVSS against the FIRST formula, OSV range
-  matching, nested lockfile resolution, route competition and starvation,
-  exact-cut coverage, scoped overrides, `</script>` escaping of
-  attacker-named packages, and the CLI exit codes.
+- `npm test`: 13 tests covering CVSS against the FIRST formula, OSV range
+  matching, nested lockfile resolution, npm workspaces, route competition and
+  starvation, exact-cut coverage, scoped overrides (including one package on
+  two major lines, and name@version keys where a name recurs), workspace bumps, `</script>` escaping of attacker-named
+  packages, and the CLI exit codes.
+- On a real npm workspaces app (agelace, 601 packages, 13 Dependabot alerts),
+  v0.1.0 staged nothing because members were never joined to the project;
+  v0.2.0 stages two acts that close every advisory with a published fix,
+  once the lockfile is refreshed (see Limits).
 - On the fixture, the set of packages carrying their own advisory matches
   `npm audit` exactly (30 of 30). See `docs/DECISION.md`.
 
@@ -119,12 +129,19 @@ CI gate:
 ## Limits (stated, not hidden)
 
 - The script is a starting point; run your tests after applying it.
+- npm keeps lock entries that already exist when `overrides` change, so a
+  plain `npm install` reports "up to date". The script prints the
+  `npm update` to run. A nested copy can still survive that, flagged by
+  `npm ls <name>` as `invalid`; delete that one entry from
+  `package-lock.json` and run the `npm update` again. (Deleting top-level
+  entries instead makes npm prune the package.)
   Overrides can push a transitive package past what its parent declares.
   Major jumps are flagged but not resolved.
 - An act means "act on this entrance": bump it, override beneath it, or
   replace it. Whether simply upgrading the direct dependency pulls in the
   fixed transitive version isn't checked yet (that needs registry metadata).
-- No support for npm v1 lockfiles, pnpm, yarn, or SPDX. CycloneDX covers
+- No support for npm v1 lockfiles, pnpm, yarn, or SPDX. Workspace globs are
+  not read; members are found from the lockfile's own member entries. CycloneDX covers
   other ecosystems for reading the graph, but the `overrides` script is
   npm-only.
 - Severity weighting: the worst advisory counts fully and each further one
