@@ -28,6 +28,11 @@ export function loadTerrain(path) {
 export function fromNpmLock(lock) {
   const pkgs = lock.packages;
   const root = pkgs[''] ?? {};
+  // Workspace ownership and upgrade targets are not represented by this graph yet.
+  // Refuse instead of silently disconnecting the app and claiming coverage.
+  if (root.workspaces || Object.values(pkgs).some(meta => meta.link)) {
+    throw new Error('npm workspaces/local links are not supported yet; coverage and upgrade ownership cannot be established');
+  }
   const nodes = [{ id: 0, name: root.name ?? lock.name ?? 'project', version: root.version ?? '', ecosystem: 'npm', purl: null, dev: false }];
   const index = new Map([['', 0]]);
   for (const [p, meta] of Object.entries(pkgs)) {

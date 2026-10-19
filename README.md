@@ -95,7 +95,7 @@ CI gate:
 
 ## Verified
 
-- `npm test`: 9 tests covering CVSS against the FIRST formula, OSV range
+- `npm test`: 11 tests covering CVSS against the FIRST formula, OSV range
   matching, nested lockfile resolution, route competition and starvation,
   exact-cut coverage, scoped overrides, `</script>` escaping of
   attacker-named packages, and the CLI exit codes.
@@ -124,6 +124,7 @@ CI gate:
 - An act means "act on this entrance": bump it, override beneath it, or
   replace it. Whether simply upgrading the direct dependency pulls in the
   fixed transitive version isn't checked yet (that needs registry metadata).
+- npm workspaces and local links are rejected explicitly: workspace upgrade ownership is not supported yet. Disconnected vulnerable packages receive zero coverage credit.
 - No support for npm v1 lockfiles, pnpm, yarn, or SPDX. CycloneDX covers
   other ecosystems for reading the graph, but the `overrides` script is
   npm-only.

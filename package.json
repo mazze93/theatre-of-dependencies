@@ -7,7 +7,7 @@
   "files": ["bin", "src", "stage"],
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "demo": "node bin/theatre.mjs demo"
   },
   "author": "Mazze LeCzzare Frazer <mazze@mazzeleczzare.com>",

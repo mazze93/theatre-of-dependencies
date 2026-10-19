@@ -40,7 +40,7 @@ export function stageRitual(terrain, food, organism, { maxActs = 7, backbone = 0
 
   const coverage = (set) => {
     let w = 0;
-    for (const f of food) if (f.fixed && carriers.get(f.node).every((c) => set.has(c))) w += f.w;
+    for (const f of food) if (f.fixed && carriers.get(f.node).length > 0 && carriers.get(f.node).every((c) => set.has(c))) w += f.w;
     return total ? w / total : 1;
   };
 
