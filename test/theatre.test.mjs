@@ -131,3 +131,24 @@ test('cli: demo runs offline, --json is machine-readable, --gate fails a thin ri
   const bad = spawnSync(process.execPath, [BIN, 'scan', '/nonexistent-path-for-test']);
   assert.equal(bad.status, 1);
 });
+
+
+test('npm workspaces fail explicitly instead of reporting disconnected coverage', () => {
+  assert.throws(() => fromNpmLock({ lockfileVersion: 3, packages: {
+    '': { name: 'root', workspaces: ['app'] },
+    app: { name: '@demo/app', version: '1.0.0', dependencies: { vulnerable: '1' }, devDependencies: { tool: '1' } },
+    'node_modules/@demo/app': { resolved: 'app', link: true },
+    'node_modules/vulnerable': { version: '1.0.0' },
+    'node_modules/tool': { version: '1.0.0', dev: true },
+  } }), /workspaces\/local links are not supported/);
+});
+
+test('a vulnerable orphan receives no coverage credit and cannot close the gate', () => {
+  const t = diamond(); t.edges = [[0, 1]];
+  const food = [{ node: 4, name: 'n4', version: '1.0.0', w: 1, fixed: '1.0.1', advisories: [] }];
+  const r = stageRitual(t, food, grow(t, food));
+  assert.equal(r.acts.length, 0);
+  assert.equal(r.coverage, 0);
+  assert.equal(r.state.key, 'open');
+  assert.equal(r.unreached.length, 1);
+});
