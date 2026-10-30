@@ -12,7 +12,7 @@ import { loadTerrain } from '../src/graph.mjs';
 import { OSV } from '../src/osv.mjs';
 import { gatherFood } from '../src/feed.mjs';
 import { grow } from '../src/physarum.mjs';
-import { stageRitual, STATES } from '../src/ritual.mjs';
+import { stageRitual, scriptOf, STATES } from '../src/ritual.mjs';
 import { performGrowth, playbill, scriptBlock, colorOn } from '../src/render-term.mjs';
 import { stageData, renderStage } from '../src/stage.mjs';
 
@@ -101,7 +101,7 @@ try {
           advisories: it.advisories.map((x) => ({ id: x.id, aliases: x.aliases, label: x.label, score: x.score, fixed: x.fixed })) })) })),
       secondOpinion: ritual.secondOpinion,
       unfixed: ritual.unfixed.map((f) => ({ name: f.name, version: f.version, advisories: f.advisories.map((x) => x.id) })),
-      script: { dependencies: ritual.overrides.bumps, overrides: ritual.overrides.overrides, majorJumps: ritual.overrides.majors },
+      script: { ...scriptOf(ritual), majorJumps: ritual.overrides.majors },
     }, null, 2) + '\n');
   } else {
     if (!o['no-anim'] && food.length) await performGrowth(terrain, organism, ritual);
@@ -110,7 +110,7 @@ try {
   }
 
   if (o.write) {
-    writeFileSync(resolve(o.write), JSON.stringify({ dependencies: ritual.overrides.bumps, overrides: ritual.overrides.overrides }, null, 2) + '\n');
+    writeFileSync(resolve(o.write), JSON.stringify(scriptOf(ritual), null, 2) + '\n');
     log(`script written to ${o.write}`);
   }
 

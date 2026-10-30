@@ -25,6 +25,13 @@ export function loadTerrain(path) {
 // npm v2/v3: keys are install paths ("node_modules/a/node_modules/b"). A dependency
 // named N declared at path P resolves the way Node does: P/node_modules/N, then
 // each ancestor's node_modules/N, up to the top level.
+//
+// npm workspaces: a member is a key with no node_modules/ segment ("app",
+// "packages/ui"). Members are folded into the project (node 0): what they declare,
+// dev dependencies included, are the project's entrances, and each entrance
+// records the manifest(s) that declare it so a bump lands in the right file.
+const isMember = (p) => p !== '' && !p.startsWith('node_modules/') && !p.includes('/node_modules/');
+
 export function fromNpmLock(lock) {
   const pkgs = lock.packages;
   const root = pkgs[''] ?? {};
@@ -35,8 +42,9 @@ export function fromNpmLock(lock) {
   }
   const nodes = [{ id: 0, name: root.name ?? lock.name ?? 'project', version: root.version ?? '', ecosystem: 'npm', purl: null, dev: false }];
   const index = new Map([['', 0]]);
+  for (const [p, meta] of Object.entries(pkgs)) if (isMember(p) && !meta.link) index.set(p, 0);
   for (const [p, meta] of Object.entries(pkgs)) {
-    if (p === '' || meta.link) continue;
+    if (p === '' || meta.link || isMember(p)) continue;
     const name = meta.name ?? p.slice(p.lastIndexOf('node_modules/') + 13);
     index.set(p, nodes.length);
     nodes.push({ id: nodes.length, name, version: meta.version ?? '', ecosystem: 'npm',
@@ -60,11 +68,18 @@ export function fromNpmLock(lock) {
   for (const [p, meta] of Object.entries(pkgs)) {
     if (meta.link || !index.has(p)) continue;
     const from = index.get(p);
+    const own = p === '' || isMember(p);
     const deps = { ...meta.dependencies, ...meta.optionalDependencies,
-      ...(p === '' ? meta.devDependencies : {}) };
+      ...(own ? meta.devDependencies : {}) };
     for (const dep of Object.keys(deps)) {
       const to = resolve(p, dep);
-      if (to == null || to === from) continue;
+      // to === 0: a workspace depending on a sibling workspace, which is the project.
+      if (to == null || to === from || to === 0) continue;
+      if (own) {
+        const m = nodes[to].manifests ??= [];
+        const file = p === '' ? 'package.json' : `${p}/package.json`;
+        if (!m.includes(file)) m.push(file);
+      }
       const k = `${from}>${to}`;
       if (!seen.has(k)) { seen.add(k); edges.push([from, to]); }
     }
