@@ -7,7 +7,7 @@ import { cvss3Score, severityOf } from '../src/severity.mjs';
 import { compare, fixedFor } from '../src/semver.mjs';
 import { fromNpmLock, fromCycloneDX } from '../src/graph.mjs';
 import { grow } from '../src/physarum.mjs';
-import { stageRitual, refreshList } from '../src/ritual.mjs';
+import { stageRitual, refreshList, scriptOf } from '../src/ritual.mjs';
 import { stageData, renderStage } from '../src/stage.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/theatre.mjs', import.meta.url));
@@ -88,6 +88,31 @@ test('a vulnerable direct dependency of a workspace is bumped in that workspace'
   assert.equal(r.coverage, 1);
   assert.deepEqual(r.overrides.bumps, {});
   assert.deepEqual(r.overrides.workspaces, { app: { n3: '^1.0.4' } });
+});
+
+test('a direct dependency declared by the root and by workspace members is bumped in each manifest', () => {
+  const g = fromNpmLock({ lockfileVersion: 3, packages: {
+    '': { name: 'mono', workspaces: ['app', 'lib'], dependencies: { lodash: '1.0.0' } },
+    app: { name: '@m/app', version: '0.1.0', dependencies: { lodash: '1.0.0' } },
+    lib: { name: '@m/lib', version: '0.1.0', dependencies: { lodash: '1.0.0' } },
+    'node_modules/@m/app': { resolved: 'app', link: true },
+    'node_modules/@m/lib': { resolved: 'lib', link: true },
+    'node_modules/lodash': { version: '1.0.0' },
+  } });
+  const copies = g.nodes.filter((n) => n.name === 'lodash');
+  assert.equal(copies.length, 1);
+  assert.deepEqual(copies[0].manifests, ['package.json', 'app/package.json', 'lib/package.json']);
+  const food = [{ node: copies[0].id, name: 'lodash', version: '1.0.0', w: 1, fixed: '1.0.1',
+    advisories: [{ id: 'GHSA-z', label: 'HIGH', score: 7.5, fixed: '1.0.1', summary: '' }] }];
+  const r = stageRitual(g, food, grow(g, food));
+  // The hoisted copy can already close coverage. Each declaring manifest still
+  // has to be bumped, and the bump must not become an override (EOVERRIDE).
+  assert.equal(r.coverage, 1);
+  assert.deepEqual(scriptOf(r), {
+    dependencies: { lodash: '^1.0.1' },
+    overrides: {},
+    workspaces: { app: { lodash: '^1.0.1' }, lib: { lodash: '^1.0.1' } },
+  });
 });
 
 test('one act, one package on two major lines: each copy is scoped under its own parent', () => {

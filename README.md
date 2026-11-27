@@ -100,10 +100,10 @@ CI gate:
 
 ## Verified
 
-- `npm test`: 14 tests covering CVSS against the FIRST formula, OSV range
+- `npm test`: 15 tests covering CVSS against the FIRST formula, OSV range
   matching, nested lockfile resolution, npm workspaces, route competition and
   starvation, exact-cut coverage, scoped overrides (including one package on
-  two major lines, and name@version keys where a name recurs), workspace bumps, zero coverage credit for disconnected packages, `</script>` escaping of attacker-named
+  two major lines, and name@version keys where a name recurs), workspace bumps for every declaring manifest, zero coverage credit for disconnected packages, `</script>` escaping of attacker-named
   packages, and the CLI exit codes.
 - On a real npm workspaces app (agelace, 601 packages, 13 Dependabot alerts),
   v0.1.0 staged nothing because members were never joined to the project;
